@@ -44,6 +44,22 @@ namespace MuMech
                 float machNumber = fcs.GetMachNumber(mainBody, (float)vessel.altitude, velocity);
                 float AoA = fcs.CalculateAoA(velocity, fcs.maxdeflect);
                 vesselState.ctrlTorqueAvailable.Add(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, machNumber, AoA))));
+
+
+                //fcs.stall = stall
+                typeof(FARWingAerodynamicModel).GetField("stall", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance).SetValue(fcs as FARWingAerodynamicModel, stall);
+                fcs.Cl = cl;
+                fcs.Cd = cd;
+
+                // fcs.ClIncrementFromRear = ClIncrementFromRear;
+                typeof(FARWingAerodynamicModel).GetField("ClIncrementFromRear", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance).SetValue(fcs, ClIncrementFromRear);
+                if (PartInFrontOf != null)
+                {
+                    FARWingAerodynamicModel w = PartInFrontOf.GetComponent<FARWingAerodynamicModel>();
+                    // fcs.PartInFrontOf.ClIncrementFromRear = WClIncrementFromRear
+                    typeof(FARWingAerodynamicModel).GetField("ClIncrementFromRear", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance).SetValue(w, WClIncrementFromRear);
+                }
+
                 AoA = fcs.CalculateAoA(velocity, -fcs.maxdeflect);
                 vesselState.ctrlTorqueAvailable.Add(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, machNumber, AoA))));
 
