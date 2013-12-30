@@ -37,8 +37,6 @@ namespace MuMech
                     WClIncrementFromRear = (float)(typeof(FARWingAerodynamicModel).GetField("ClIncrementFromRear", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance).GetValue(w));
                 }
 
-                //print("A Stall " + fcs.GetStall().ToString("F3") + " Cl " + fcs.GetCl() + " Cd " + fcs.GetCd());
-
                 Vector3d forcePosition = fcs.AerodynamicCenter - vesselState.CoM;
                 Vector3 velocity = fcs.GetVelocity(fcs.AerodynamicCenter);
                 float machNumber = fcs.GetMachNumber(mainBody, (float)vessel.altitude, velocity);
@@ -76,19 +74,26 @@ namespace MuMech
                     // fcs.PartInFrontOf.ClIncrementFromRear = WClIncrementFromRear
                     typeof(FARWingAerodynamicModel).GetField("ClIncrementFromRear", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance).SetValue(w, WClIncrementFromRear);
                 }
-
-                //print("B Stall " + fcs.GetStall().ToString("F3") + " Cl " + fcs.GetCl() + " Cd " + fcs.GetCd());
-
             }
         }
+
+        public double TerminalVelocityFAR()
+        {
+            if (vesselState.altitudeASL > mainBody.RealMaxAtmosphereAltitude()) return double.PositiveInfinity;
+
+            FieldInfo termVel = typeof(FARControlSys).GetField("termVel", BindingFlags.NonPublic | BindingFlags.Static);
+
+            return (float)termVel.GetValue(null);
+        }
+
         
         public override void OnStart(PartModule.StartState state)
         {
             isFarLoaded = AssemblyLoader.loadedAssemblies.Any(a => a.assembly.GetName().Name == "FerramAerospaceResearch");
             print("MechJebFARExt adding MJ2 callback");
             vesselState.vesselStatePartModuleExtensions.Add(partModuleUpdate);
-            print("This vessel now has " + vesselState.vesselStatePartModuleExtensions.Count() + " VS PM Ext" );
 
+            vesselState.TerminalVelocityCall = TerminalVelocityFAR;
         }
     }
 }
