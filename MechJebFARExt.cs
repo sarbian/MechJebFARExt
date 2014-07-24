@@ -83,7 +83,7 @@ namespace MuMech
 
             FieldInfo termVel = typeof(FARControlSys).GetField("termVel", BindingFlags.Public | BindingFlags.Static);
 
-            return (float)termVel.GetValue(null);
+            return (double)termVel.GetValue(null);
         }
 
         
