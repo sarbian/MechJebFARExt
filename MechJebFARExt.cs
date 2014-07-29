@@ -22,25 +22,25 @@ namespace MuMech
                 // Sarbian : TODO limit fcs.maxdeflect when all axes are not used ?
                 FARControllableSurface fcs = (FARControllableSurface)pm;
 
-                float stall = fcs.GetStall();
-                float cl = fcs.GetCl();
-                float cd = fcs.GetCd();
+                double stall = fcs.GetStall();
+                double cl = fcs.GetCl();
+                double cd = fcs.GetCd();
                 // ClIncrementFromRear = fcs.ClIncrementFromRear;
-                float ClIncrementFromRear = (float)(typeof(FARWingAerodynamicModel).GetField("ClIncrementFromRear", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance).GetValue(fcs));
+                double ClIncrementFromRear = (double)(typeof(FARWingAerodynamicModel).GetField("ClIncrementFromRear", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance).GetValue(fcs));
                 // PartInFrontOf = fcs.PartInFrontOf
                 Part PartInFrontOf = (Part)(typeof(FARWingAerodynamicModel).GetField("PartInFrontOf", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance).GetValue(fcs));
 
-                float WClIncrementFromRear=0;
+                double WClIncrementFromRear = 0;
                 if (PartInFrontOf != null)
                 {
                     FARWingAerodynamicModel w = PartInFrontOf.GetComponent<FARWingAerodynamicModel>();
-                    WClIncrementFromRear = (float)(typeof(FARWingAerodynamicModel).GetField("ClIncrementFromRear", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance).GetValue(w));
+                    WClIncrementFromRear = (double)(typeof(FARWingAerodynamicModel).GetField("ClIncrementFromRear", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance).GetValue(w));
                 }
 
                 Vector3d forcePosition = fcs.AerodynamicCenter - vesselState.CoM;
                 Vector3 velocity = fcs.GetVelocity(fcs.AerodynamicCenter);
-                float machNumber = fcs.GetMachNumber(mainBody, (float)vessel.altitude, velocity);
-                float AoA = fcs.CalculateAoA(velocity, fcs.maxdeflect);
+                double machNumber = fcs.GetMachNumber(mainBody, (float)vessel.altitude, velocity);
+                double AoA = fcs.CalculateAoA(velocity, fcs.maxdeflect);
                 vesselState.ctrlTorqueAvailable.Add(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, machNumber, AoA))));
 
 
@@ -81,9 +81,9 @@ namespace MuMech
         {
             if (vesselState.altitudeASL > mainBody.RealMaxAtmosphereAltitude()) return double.PositiveInfinity;
 
-            FieldInfo termVel = typeof(FARControlSys).GetField("termVel", BindingFlags.NonPublic | BindingFlags.Static);
+            FieldInfo termVel = typeof(FARControlSys).GetField("termVel", BindingFlags.Public | BindingFlags.Static);
 
-            return (float)termVel.GetValue(null);
+            return (double)termVel.GetValue(null);
         }
 
         
