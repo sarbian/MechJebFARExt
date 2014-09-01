@@ -34,3 +34,7 @@ using System.Runtime.InteropServices;
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("1.0.0.0")]
 [assembly: AssemblyFileVersion("1.0.0.0")]
+
+[assembly: KSPAssembly("MechJebFARExt", 1, 0)]
+[assembly: KSPAssemblyDependency("MechJeb2", 1, 0)]
+//[assembly: KSPAssemblyDependency("FerramAerospaceResearch", 1, 0)]
