@@ -16,7 +16,7 @@ namespace MuMech
         bool isFarLoaded = false;
 
         FieldInfo FieldClIncrementFromRear;
-        FieldInfo FieldPartInFrontOf;
+        //FieldInfo FieldPartInFrontOf;
         FieldInfo FieldStall;
 
         FieldInfo FieldCurrentLift;
@@ -25,7 +25,7 @@ namespace MuMech
         FieldInfo FieldPitchLocation;
         FieldInfo FieldYawLocation;
         FieldInfo FieldRollLocation;
-        FieldInfo FieldAoAsign;
+        //FieldInfo FieldAoAsign;
 
         private void partModuleUpdate(PartModule pm)
         {
@@ -64,20 +64,20 @@ namespace MuMech
                         maxdeflect += (double)(FieldPitchLocation.GetValue(fcs));
                     }
 
-                    maxdeflect *= (double)(FieldAoAsign.GetValue(fcs)) * fcs.maxdeflect;
+                    //maxdeflect *= (double)(FieldAoAsign.GetValue(fcs)) * fcs.maxdeflect;
                     maxdeflect = FARMathUtil.Clamp(maxdeflect, -Math.Abs(fcs.maxdeflect), Math.Abs(fcs.maxdeflect));
                     
                     // ClIncrementFromRear = fcs.ClIncrementFromRear;
                     double ClIncrementFromRear = (double)(FieldClIncrementFromRear.GetValue(fcs));
                     // PartInFrontOf = fcs.PartInFrontOf
-                    Part PartInFrontOf = (Part)(FieldPartInFrontOf.GetValue(fcs));
+                    //Part PartInFrontOf = (Part)(FieldPartInFrontOf.GetValue(fcs));
 
                     double WClIncrementFromRear = 0;
-                    if (PartInFrontOf != null)
-                    {
-                        FARWingAerodynamicModel w = PartInFrontOf.GetComponent<FARWingAerodynamicModel>();
-                        WClIncrementFromRear = (double)(FieldClIncrementFromRear.GetValue(w));
-                    }
+                    //if (PartInFrontOf != null)
+                    //{
+                    //    FARWingAerodynamicModel w = PartInFrontOf.GetComponent<FARWingAerodynamicModel>();
+                    //    WClIncrementFromRear = (double)(FieldClIncrementFromRear.GetValue(w));
+                    //}
 
                     double machNumber = fcs.GetMachNumber(mainBody, (float)vessel.altitude, velocity);
                     fcs.YmaxForce = double.MaxValue;
@@ -97,12 +97,12 @@ namespace MuMech
 
                     // fcs.ClIncrementFromRear = ClIncrementFromRear;
                     FieldClIncrementFromRear.SetValue(fcs, ClIncrementFromRear);
-                    if (PartInFrontOf != null)
-                    {
-                        FARWingAerodynamicModel w = PartInFrontOf.GetComponent<FARWingAerodynamicModel>();
-                        // fcs.PartInFrontOf.ClIncrementFromRear = WClIncrementFromRear
-                        FieldClIncrementFromRear.SetValue(w, WClIncrementFromRear);
-                    }
+                    //if (PartInFrontOf != null)
+                    //{
+                    //    FARWingAerodynamicModel w = PartInFrontOf.GetComponent<FARWingAerodynamicModel>();
+                    //    // fcs.PartInFrontOf.ClIncrementFromRear = WClIncrementFromRear
+                    //    FieldClIncrementFromRear.SetValue(w, WClIncrementFromRear);
+                    //}
 
                     // And the other way
                     AoA = fcs.CalculateAoA(velocity, -maxdeflect);
@@ -123,12 +123,12 @@ namespace MuMech
 
                     // fcs.ClIncrementFromRear = ClIncrementFromRear;
                     FieldClIncrementFromRear.SetValue(fcs, ClIncrementFromRear);
-                    if (PartInFrontOf != null)
-                    {
-                        FARWingAerodynamicModel w = PartInFrontOf.GetComponent<FARWingAerodynamicModel>();
-                        // fcs.PartInFrontOf.ClIncrementFromRear = WClIncrementFromRear
-                        FieldClIncrementFromRear.SetValue(w, WClIncrementFromRear);
-                    }
+                    //if (PartInFrontOf != null)
+                    //{
+                    //    FARWingAerodynamicModel w = PartInFrontOf.GetComponent<FARWingAerodynamicModel>();
+                    //    // fcs.PartInFrontOf.ClIncrementFromRear = WClIncrementFromRear
+                    //    FieldClIncrementFromRear.SetValue(w, WClIncrementFromRear);
+                    //}
                 }
             }
         }
@@ -148,7 +148,7 @@ namespace MuMech
             if (isFarLoaded)
             {
                 FieldClIncrementFromRear = typeof(FARWingAerodynamicModel).GetField("ClIncrementFromRear", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
-                FieldPartInFrontOf = typeof(FARWingAerodynamicModel).GetField("PartInFrontOf", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
+                //FieldPartInFrontOf = typeof(FARWingAerodynamicModel).GetField("PartInFrontOf", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
                 FieldStall = typeof(FARWingAerodynamicModel).GetField("stall", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
 
                 FieldCurrentLift = typeof(FARWingAerodynamicModel).GetField("currentLift", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
@@ -157,11 +157,11 @@ namespace MuMech
                 FieldPitchLocation = typeof(FARControllableSurface).GetField("PitchLocation", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
                 FieldYawLocation = typeof(FARControllableSurface).GetField("YawLocation", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
                 FieldRollLocation = typeof(FARControllableSurface).GetField("RollLocation", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);;
-                FieldAoAsign = typeof(FARControllableSurface).GetField("AoAsign", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
+                //FieldAoAsign = typeof(FARControllableSurface).GetField("AoAsign", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
 
-                if (FieldClIncrementFromRear != null && FieldPartInFrontOf != null && FieldStall != null &&
+                if (FieldClIncrementFromRear != null != null && FieldStall != null &&
                     FieldCurrentLift != null && FieldCurrentDrag != null &&
-                    FieldPitchLocation != null && FieldYawLocation != null && FieldRollLocation != null && FieldAoAsign != null)
+                    FieldPitchLocation != null && FieldYawLocation != null && FieldRollLocation != null)
                 {
                     print("MechJebFARExt adding MJ2 callback");
                     vesselState.vesselStatePartModuleExtensions.Add(partModuleUpdate);
