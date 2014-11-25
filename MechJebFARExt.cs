@@ -15,97 +15,89 @@ namespace MuMech
 
         bool isFarLoaded = false;
 
-        FieldInfo FieldClIncrementFromRear;
-        FieldInfo FieldStall;
-
-        FieldInfo FieldCurrentLift;
-        FieldInfo FieldCurrentDrag;
-
         FieldInfo FieldPitchLocation;
         FieldInfo FieldYawLocation;
         FieldInfo FieldRollLocation;
+        FieldInfo FieldAoAcurrentFlap;
 
         private void partModuleUpdate(PartModule pm)
         {
             if (isFarLoaded && pm is FARControllableSurface)
             {
-                if (vessel.staticPressure > 0)
-                {
-                    FARControllableSurface fcs = (FARControllableSurface)pm;
+                FARControllableSurface fcs = (FARControllableSurface)pm;
 
+                if (vessel.atmDensity > 0)
+                {
                     Vector3d forcePosition = fcs.AerodynamicCenter - vesselState.CoM;
-                    Vector3 velocity = fcs.GetVelocity(fcs.AerodynamicCenter);
+                    Vector3 velocity = fcs.GetVelocity();
+
+                    double soundspeed, v_scalar = velocity.magnitude;
+
+                    double rho = FARAeroUtil.GetCurrentDensity(vessel, out soundspeed);
+                    if (rho <= 0.0 || v_scalar <= 0.1 || fcs.isShielded)
+                        return;
 
                     // First we save the curent state of the part
-
-                    double stall = fcs.GetStall();
-                    double cl = fcs.Cl;
-                    double cd = fcs.Cd;
-                    double cm = fcs.Cm;
                     double YmaxForce = fcs.YmaxForce;
                     double XZmaxForce = fcs.XZmaxForce;
 
-                    float currentLift = (float)(FieldCurrentLift.GetValue(fcs));
-                    float currentDrag = (float)(FieldCurrentDrag.GetValue(fcs));
+                    double AoAcurrentFlap = (double)(FieldAoAcurrentFlap.GetValue(fcs));
 
-                    double maxdeflect = 0;
-                    if (fcs.pitchaxis)
+                    double MaxAoAdesiredControl = 0;
+                    if (fcs.pitchaxis != 0.0)
                     {
-                        maxdeflect += (double)(FieldPitchLocation.GetValue(fcs));
+                        MaxAoAdesiredControl += (double)(FieldPitchLocation.GetValue(fcs)) * fcs.pitchaxis * 0.01;
                     }
-                    if (fcs.yawaxis)
+                    if (fcs.yawaxis != 0.0)
                     {
-                        maxdeflect += (double)(FieldPitchLocation.GetValue(fcs));
+                        MaxAoAdesiredControl += (double)(FieldYawLocation.GetValue(fcs)) * fcs.yawaxis * 0.01; ;
                     }
-                    if (fcs.rollaxis)
+                    if (fcs.rollaxis != 0.0)
                     {
-                        maxdeflect += (double)(FieldPitchLocation.GetValue(fcs));
+                        MaxAoAdesiredControl += (double)(FieldRollLocation.GetValue(fcs)) * fcs.rollaxis * 0.01; ;
+                    }
+                    MaxAoAdesiredControl *= fcs.maxdeflect;
+                    if (fcs.pitchaxisDueToAoA != 0.0)
+                    {
+                        double _AoA = (fcs as FARWingAerodynamicModel).CalculateAoA(velocity.normalized);
+                        _AoA = FARMathUtil.rad2deg * Math.Asin(_AoA);
+                        if (double.IsNaN(_AoA))
+                            _AoA = 0;
+                        MaxAoAdesiredControl += _AoA * fcs.pitchaxisDueToAoA * 0.01;
                     }
 
-                    maxdeflect = FARMathUtil.Clamp(maxdeflect, -Math.Abs(fcs.maxdeflect), Math.Abs(fcs.maxdeflect));
-                    
-                    double ClIncrementFromRear = (double)(FieldClIncrementFromRear.GetValue(fcs));
+                    MaxAoAdesiredControl = FARMathUtil.Clamp(MaxAoAdesiredControl, -Math.Abs(fcs.maxdeflect), Math.Abs(fcs.maxdeflect));
 
-                    double machNumber = fcs.GetMachNumber(mainBody, (float)vessel.altitude, velocity);
+                    double MachNumber = v_scalar / soundspeed;
                     fcs.YmaxForce = double.MaxValue;
                     fcs.XZmaxForce = double.MaxValue;
 
                     // Then we turn it one way
-                    double AoA = fcs.CalculateAoA(velocity, maxdeflect);
-                    vesselState.ctrlTorqueAvailable.Add(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, machNumber, AoA))));
+                    double AoA = fcs.CalculateAoA(velocity, AoAcurrentFlap +  MaxAoAdesiredControl);
+                    vesselState.ctrlTorqueAvailable.Add(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, MachNumber, AoA))));
 
                     // We restore it to the initial state
-                    FieldStall.SetValue(fcs as FARWingAerodynamicModel, stall);
-                    fcs.Cl = cl;
-                    fcs.Cd = cd;
-                    fcs.Cm = cm;
+                    AoA = fcs.CalculateAoA(velocity);
+                    fcs.CalculateForces(velocity, MachNumber, AoA);
 
-                    FieldClIncrementFromRear.SetValue(fcs, ClIncrementFromRear);
-
-                    // And the other way
-                    AoA = fcs.CalculateAoA(velocity, -maxdeflect);
-                    vesselState.ctrlTorqueAvailable.Add(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, machNumber, AoA))));
+                    // And we turn it the other way
+                    AoA = fcs.CalculateAoA(velocity, AoAcurrentFlap - MaxAoAdesiredControl);
+                    vesselState.ctrlTorqueAvailable.Add(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, MachNumber, AoA))));
 
                     // And in the end we restore its initial state
+                    AoA = fcs.CalculateAoA(velocity);
+                    fcs.CalculateForces(velocity, MachNumber, AoA);
 
-                    FieldStall.SetValue(fcs as FARWingAerodynamicModel, stall);
-                    fcs.Cl = cl;
-                    fcs.Cd = cd;
-                    fcs.Cm = cm;
                     fcs.YmaxForce = YmaxForce;
                     fcs.XZmaxForce = XZmaxForce;
-
-                    FieldCurrentLift.SetValue(fcs as FARWingAerodynamicModel, currentLift);
-                    FieldCurrentDrag.SetValue(fcs as FARWingAerodynamicModel, currentDrag);
-
-                    FieldClIncrementFromRear.SetValue(fcs, ClIncrementFromRear);
                 }
             }
         }
 
         public double TerminalVelocityFAR()
         {
-            if (vesselState.altitudeASL > mainBody.RealMaxAtmosphereAltitude()) return double.PositiveInfinity;
+            if (vesselState.altitudeASL > mainBody.RealMaxAtmosphereAltitude()) 
+                return double.PositiveInfinity;
 
             return FARAPI.GetActiveControlSys_TermVel();
         }
@@ -118,19 +110,13 @@ namespace MuMech
             if (!isFarLoaded)
                 return;
 
-            FieldClIncrementFromRear = typeof(FARWingAerodynamicModel).GetField("ClIncrementFromRear", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
-            FieldStall = typeof(FARWingAerodynamicModel).GetField("stall", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
-
-            FieldCurrentLift = typeof(FARWingAerodynamicModel).GetField("currentLift", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
-            FieldCurrentDrag = typeof(FARWingAerodynamicModel).GetField("currentDrag", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
-
             FieldPitchLocation = typeof(FARControllableSurface).GetField("PitchLocation", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
             FieldYawLocation = typeof(FARControllableSurface).GetField("YawLocation", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
-            FieldRollLocation = typeof(FARControllableSurface).GetField("RollLocation", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);;
+            FieldRollLocation = typeof(FARControllableSurface).GetField("RollLocation", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
 
-            if (FieldClIncrementFromRear != null && FieldStall != null &&
-                FieldCurrentLift != null && FieldCurrentDrag != null &&
-                FieldPitchLocation != null && FieldYawLocation != null && FieldRollLocation != null)
+            FieldAoAcurrentFlap = typeof(FARControllableSurface).GetField("AoAcurrentFlap", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
+
+            if (FieldPitchLocation != null && FieldYawLocation != null && FieldRollLocation != null && FieldAoAcurrentFlap != null)
             {
                 print("MechJebFARExt adding MJ2 callback");
                 vesselState.vesselStatePartModuleExtensions.Add(partModuleUpdate);
@@ -140,7 +126,7 @@ namespace MuMech
             else
             {
                 isFarLoaded = false;
-                string status = "MechJebFARExt : failure to initialize reflection calls, a new version may be required";
+                const string status = "MechJebFARExt : failure to initialize reflection calls, a new version may be required";
                 ScreenMessages.PostScreenMessage(status, 10, ScreenMessageStyle.UPPER_CENTER);
                 print(status);
             }
