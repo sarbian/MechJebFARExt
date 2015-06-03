@@ -5,6 +5,7 @@ using System.Text;
 using MuMech;
 using UnityEngine;
 using ferram4;
+using FerramAerospaceResearch;
 using System.Reflection;
 
 namespace MuMech
@@ -31,10 +32,10 @@ namespace MuMech
                     Vector3d forcePosition = fcs.AerodynamicCenter - vesselState.CoM;
                     Vector3 velocity = fcs.GetVelocity();
 
-                    double soundspeed, v_scalar = velocity.magnitude;
+                    // double soundspeed, v_scalar = velocity.magnitude;
 
-                    double rho = FARAeroUtil.GetCurrentDensity(vessel, out soundspeed);
-                    if (rho <= 0.0 || v_scalar <= 0.1 || fcs.isShielded)
+                    double rho = FARAeroUtil.GetCurrentDensity(vessel, true);
+                    if (rho <= 0.0 || /* v_scalar <= 0.1 ||*/ fcs.isShielded)
                         return;
 
                     // First we save the curent state of the part
@@ -68,25 +69,30 @@ namespace MuMech
 
                     MaxAoAdesiredControl = FARMathUtil.Clamp(MaxAoAdesiredControl, -Math.Abs(fcs.maxdeflect), Math.Abs(fcs.maxdeflect));
 
-                    double MachNumber = v_scalar / soundspeed;
+                    //double MachNumber = v_scalar / soundspeed;
+                    double MachNumber = vessel.mach;
                     fcs.YmaxForce = double.MaxValue;
                     fcs.XZmaxForce = double.MaxValue;
 
+                    Vector3 CoM = vessel.findWorldCenterOfMass();
+                    Vector3d partPosition = pm.part.Rigidbody.worldCenterOfMass - CoM;
+                    Vector3 relpos = vessel.transform.InverseTransformDirection(partPosition);
+
                     // Then we turn it one way
                     double AoA = fcs.CalculateAoA(velocity, AoAcurrentFlap +  MaxAoAdesiredControl);
-                    vesselState.ctrlTorqueAvailable.Add(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, MachNumber, AoA))));
+                    vesselState.ctrlTorqueAvailablePos = Vector3.Scale(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, MachNumber, AoA, rho))), relpos);
 
                     // We restore it to the initial state
                     AoA = fcs.CalculateAoA(velocity);
-                    fcs.CalculateForces(velocity, MachNumber, AoA);
+                    fcs.CalculateForces(velocity, MachNumber, AoA, rho);
 
                     // And we turn it the other way
                     AoA = fcs.CalculateAoA(velocity, AoAcurrentFlap - MaxAoAdesiredControl);
-                    vesselState.ctrlTorqueAvailable.Add(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, MachNumber, AoA))));
+                    vesselState.ctrlTorqueAvailablePos = Vector3.Scale(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, MachNumber, AoA, rho))), relpos);
 
                     // And in the end we restore its initial state
                     AoA = fcs.CalculateAoA(velocity);
-                    fcs.CalculateForces(velocity, MachNumber, AoA);
+                    fcs.CalculateForces(velocity, MachNumber, AoA, rho);
 
                     fcs.YmaxForce = YmaxForce;
                     fcs.XZmaxForce = XZmaxForce;
@@ -99,7 +105,7 @@ namespace MuMech
             if (vesselState.altitudeASL > mainBody.RealMaxAtmosphereAltitude()) 
                 return double.PositiveInfinity;
 
-            return FARAPI.GetActiveControlSys_TermVel();
+            return FARAPI.ActiveVesselTermVelEst();
         }
 
 
