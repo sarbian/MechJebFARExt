@@ -19,6 +19,7 @@ namespace MuMech
         FieldInfo FieldPitchLocation;
         FieldInfo FieldYawLocation;
         FieldInfo FieldRollLocation;
+        FieldInfo FieldAoAsign;
         FieldInfo FieldAoAcurrentFlap;
 
         private void partModuleUpdate(PartModule pm)
@@ -26,16 +27,15 @@ namespace MuMech
             if (isFarLoaded && pm is FARControllableSurface)
             {
                 FARControllableSurface fcs = (FARControllableSurface)pm;
-
+                
                 if (vessel.atmDensity > 0)
                 {
                     Vector3d forcePosition = fcs.AerodynamicCenter - vesselState.CoM;
                     Vector3 velocity = fcs.GetVelocity();
-
-                    // double soundspeed, v_scalar = velocity.magnitude;
-
+                    
+                    double v_scalar = velocity.magnitude;
                     double rho = FARAeroUtil.GetCurrentDensity(vessel, true);
-                    if (rho <= 0.0 || /* v_scalar <= 0.1 ||*/ fcs.isShielded)
+                    if (rho <= 0.0 || v_scalar <= 0.1 || fcs.isShielded)
                         return;
 
                     // First we save the curent state of the part
@@ -67,35 +67,41 @@ namespace MuMech
                         MaxAoAdesiredControl += _AoA * fcs.pitchaxisDueToAoA * 0.01;
                     }
 
+                    MaxAoAdesiredControl *= (double) (FieldAoAsign.GetValue(fcs));
+                    
                     MaxAoAdesiredControl = FARMathUtil.Clamp(MaxAoAdesiredControl, -Math.Abs(fcs.maxdeflect), Math.Abs(fcs.maxdeflect));
 
-                    //double MachNumber = v_scalar / soundspeed;
-                    double MachNumber = vessel.mach;
                     fcs.YmaxForce = double.MaxValue;
                     fcs.XZmaxForce = double.MaxValue;
 
                     Vector3 CoM = vessel.findWorldCenterOfMass();
                     Vector3d partPosition = pm.part.Rigidbody.worldCenterOfMass - CoM;
                     Vector3 relpos = vessel.transform.InverseTransformDirection(partPosition);
-
+                    
                     // Then we turn it one way
                     double AoA = fcs.CalculateAoA(velocity, AoAcurrentFlap +  MaxAoAdesiredControl);
-                    vesselState.ctrlTorqueAvailablePos = Vector3.Scale(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, MachNumber, AoA, rho))), relpos);
-
+                    Vector3 ctrlTorquePos = Vector3.Scale(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, vessel.mach, AoA, rho))), relpos);
+                    
                     // We restore it to the initial state
                     AoA = fcs.CalculateAoA(velocity);
-                    fcs.CalculateForces(velocity, MachNumber, AoA, rho);
-
+                    fcs.CalculateForces(velocity, vessel.mach, AoA, rho);
+                    
                     // And we turn it the other way
                     AoA = fcs.CalculateAoA(velocity, AoAcurrentFlap - MaxAoAdesiredControl);
-                    vesselState.ctrlTorqueAvailablePos = Vector3.Scale(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, MachNumber, AoA, rho))), relpos);
-
+                    Vector3 ctrlTorqueNeg = Vector3.Scale(vessel.GetTransform().InverseTransformDirection(Vector3.Cross(forcePosition, fcs.CalculateForces(velocity, vessel.mach, AoA, rho))), relpos);
+                    
                     // And in the end we restore its initial state
                     AoA = fcs.CalculateAoA(velocity);
-                    fcs.CalculateForces(velocity, MachNumber, AoA, rho);
-
+                    fcs.CalculateForces(velocity, vessel.mach, AoA, rho);
+                    
                     fcs.YmaxForce = YmaxForce;
                     fcs.XZmaxForce = XZmaxForce;
+
+                    // TODO : change the value with a factor related to the current part position
+
+                    vesselState.ctrlTorqueAvailablePos += ctrlTorquePos;
+                    vesselState.ctrlTorqueAvailableNeg += ctrlTorqueNeg;
+
                 }
             }
         }
@@ -119,6 +125,8 @@ namespace MuMech
             FieldPitchLocation = typeof(FARControllableSurface).GetField("PitchLocation", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
             FieldYawLocation = typeof(FARControllableSurface).GetField("YawLocation", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
             FieldRollLocation = typeof(FARControllableSurface).GetField("RollLocation", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
+
+            FieldAoAsign = typeof(FARControllableSurface).GetField("AoAsign", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
 
             FieldAoAcurrentFlap = typeof(FARControllableSurface).GetField("AoAcurrentFlap", BindingFlags.NonPublic | BindingFlags.GetField | BindingFlags.Instance);
 
