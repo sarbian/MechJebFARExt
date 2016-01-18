@@ -34,7 +34,7 @@ namespace MuMech
                     Vector3 velocity = fcs.GetVelocity();
                     
                     double v_scalar = velocity.magnitude;
-                    double rho = FARAeroUtil.GetCurrentDensity(vessel.mainBody, vessel.altitude, true);
+                    double rho = FARAeroUtil.GetCurrentDensity(vessel);
                     if (rho <= 0.0 || v_scalar <= 0.1 || fcs.isShielded)
                         return;
 
